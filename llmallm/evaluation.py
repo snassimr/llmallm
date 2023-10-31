@@ -19,6 +19,7 @@ import pandas as pd
 
 SYS_MODEL_DIR = "model"
 SYS_DG_LLM_ID = "openai"
+SYS_M_LLM_ID = "recursive"
 SYS_EVAL_LLM_ID = "openai" # camel-5b-hf
 
 ########################## Load question
@@ -47,6 +48,46 @@ import time
 import asyncio
 import nest_asyncio
 nest_asyncio.apply()
+
+def generate_responses(query_engine, questions):
+    async def run_query(query_engine, q):
+        try:
+            return await query_engine.aquery(q)
+        except:
+            return None
+
+    responses = []
+    for batch_size in range(0, len(questions), 5):
+        batch_qs = questions[batch_size:batch_size+5]
+
+        tasks = [run_query(query_engine, q) for q in batch_qs]
+        batch_responses = asyncio.run(asyncio.gather(*tasks))
+        print(f"finished batch {(batch_size // 5) + 1} out of {len(questions) // 5}")
+        responses.append(batch_responses)
+
+start = time.time()
+responses = dict()
+for f in files:
+    questions = question_data[file]
+    file_responses = []
+    for q in questions :
+        r = query_engine.query(q)
+        file_responses.append(r)
+    responses[f] = file_responses
+
+print(f"Time : {time.time() - start}")
+
+start = time.time()
+responses = dict()
+for file in files:
+    questions = question_data[file]
+    file_responses = generate_responses(query_engine, questions)
+    responses[f] = file_responses
+
+print(f"Time : {time.time() - start}")
+
+
+
 
 def evaluate_query_engine(evaluator, query_engine, questions):
     async def run_query(query_engine, q):
@@ -89,11 +130,19 @@ for file in files:
     total_correct, all_results = evaluate_query_engine(evaluator, query_engine, questions)
     print(f"ResponseEvaluator : {total_correct} correct out of {len(question_dataset)}.")
 
+
+questions = question_data['Llama 2 - Open Foundation and Fine-Tuned Chat Models.pdf']
+
 from llama_index.evaluation import ResponseEvaluator
-evaluator = ResponseEvaluator(service_context=service_context)
+evaluator = ResponseEvaluator(service_context = service_context)
 response = query_engine.query(questions[0])
 eval_result = evaluator.evaluate(response)
 type(evaluator)
+
+from llama_index.evaluation import QueryResponseEvaluator
+evaluator = QueryResponseEvaluator(service_context=service_context)
+response = query_engine.query(questions[0])
+eval_result = evaluator.evaluate_source_nodes(response)
 
 # from llama_index.evaluation import (
 #     DatasetGenerator, 
@@ -111,4 +160,5 @@ type(evaluator)
 
 
 
+    
 

@@ -18,6 +18,7 @@ import time
 
 SYS_MODEL_DIR = "model"
 SYS_DG_LLM_ID = "openai" # camel-5b-hf
+SYS_DG_N      = 20
 
 ########################## Load external data
 
@@ -86,8 +87,8 @@ for file in files:
                         service_context=service_context)
 
 
-    questions  = data_generator.generate_questions_from_nodes(num=50)
-    questions  = [f"{question.strip()}\n" for question in questions]
+    questions  = data_generator.generate_questions_from_nodes(num = SYS_DG_N)
+    questions  = [f"{question.strip()}" for question in questions]
     print(f"Generated {len(questions)} questions for {file}.")
 
     question_data[file] = questions

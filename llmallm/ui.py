@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 _ = load_dotenv()
 
+import os
 import openai
 import gradio as gr
 
@@ -8,7 +9,7 @@ import gradio as gr
 openai.api_key=os.getenv('OPENAI_API_KEY')
 
 def generate_openai_response(prompt):
-    completions =openai.ChatCompletion.create(
+    completions = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
         {"role": "user", "content": prompt}
@@ -17,21 +18,21 @@ def generate_openai_response(prompt):
     message = completions.choices[0].message.content
     return message.strip()
 
-
+# def run_ui():
+    
 import random
-import time
 
 with gr.Blocks() as demo:
     conversation = gr.Chatbot(label = "Conversation :",
-                              elem_id = None,
-                              layout = 'panel',
-                              show_copy_button = False)
+                            elem_id = None,
+                            layout = 'panel',
+                            show_copy_button = False)
     
     btn_clear_conversation = gr.ClearButton([conversation])
     
     question = gr.Textbox(label = "Question :",
-                          elem_id = None,
-                          lines = 3, max_lines = 3)
+                        elem_id = None,
+                        lines = 3, max_lines = 3)
     
     btn_clear_question = gr.ClearButton([question])
 
@@ -84,14 +85,17 @@ with gr.Blocks() as demo:
         return temp_location
 
     def process_file(file_path):
+        btn_process_file.interactive = False
         print(file_path)
+        btn_process_file.interactive = True
 
-    txtb_file_path.change(process_file, [txtb_file_path, uploaded_file])
+    txtb_file_path.change(process_file, txtb_file_path)
 
-    btn_process_file.click(get_file, inputs = uploaded_file, outputs = txtb_file_path)
+    btn_process_file.click(get_file, inputs = uploaded_file , outputs = txtb_file_path)
+    
 
 
 demo.launch(
-    show_api=False
+    show_api=False,
+    # share = True
 )
-

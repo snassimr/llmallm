@@ -2,11 +2,13 @@ import os
 import sys
 import time
 
-def load_external_data_1():
+SYS_DATA_DIR = "data"
+
+def create_document_data_1():
 
     from llama_index import SimpleDirectoryReader
 
-    files_folder = "documents"
+    files = os.listdir(SYS_DATA_DIR)
     files = os.listdir(files_folder)
     files = [f for f in files if f.endswith(".pdf")]
     files = [f for f in files if f == 'Llama 2 - Open Foundation and Fine-Tuned Chat Models.pdf']
@@ -18,23 +20,26 @@ def load_external_data_1():
     for file in files:
         if(not(file in documents)):
             documents[file] = SimpleDirectoryReader(
-                input_files=[f"{files_folder}/{file}"]).load_data()
+                input_files=[f"{SYS_DATA_DIR}/{file}"]).load_data()
             
     print(f"Documents loaded : {len(documents)}")
     print(f"Memory : {sys.getsizeof(documents)}")
     print(f"Time : {time.time() - start}")
 
-    return files, documents
+    import pickle
+    filepath = os.path.join(SYS_DATA_DIR, 'data.pkl')
+    stored_document_data = {'files' : files, 'documents' : documents}
+    with open(filepath, 'wb') as f:
+        pickle.dump(stored_document_data, f)
             
-def load_external_data_2():
+def create_document_data_2():
 
     from llama_index import download_loader
     from llama_index import SimpleDirectoryReader
 
     UnstructuredReader = download_loader('UnstructuredReader',)
 
-    files_folder = "documents"
-    files = os.listdir(files_folder)
+    files = os.listdir(SYS_DATA_DIR)
     files = [f for f in files if f.endswith(".pdf")]
     files = [f for f in files if f == 'Llama 2 - Open Foundation and Fine-Tuned Chat Models.pdf']
     document_titles = [os.path.splitext(f)[0] for f in files]
@@ -44,7 +49,7 @@ def load_external_data_2():
 
     for file in files:
         if(not(file in documents)):
-            dir_reader = SimpleDirectoryReader(input_files=[f"{files_folder}/{file}"], file_extractor={
+            dir_reader = SimpleDirectoryReader(input_files=[f"{SYS_DATA_DIR}/{file}"], file_extractor={
                         ".pdf": UnstructuredReader(),
                         })
             documents[file] = dir_reader.load_data()
@@ -52,6 +57,22 @@ def load_external_data_2():
     print(f"Documents loaded : {len(documents)}")
     print(f"Memory : {sys.getsizeof(documents)}")
     print(f"Time : {time.time() - start}")
+
+    import pickle
+    filepath = os.path.join(SYS_DATA_DIR, 'data.pkl')
+    stored_document_data = {'files' : files, 'documents' : documents}
+    with open(filepath, 'wb') as f:
+        pickle.dump(stored_document_data, f)
+
+def get_document_data():
+    
+    import pickle
+    filepath = os.path.join(SYS_DATA_DIR, 'data.pkl')
+    with open(filepath, 'rb') as f:
+        stored_document_data = pickle.load(f)
+
+    files = stored_document_data['files']
+    documents = stored_document_data['documents']
 
     return files, documents
 
