@@ -42,6 +42,12 @@ filepath = os.path.join(SYS_MODEL_DIR, 'questions' + '_' + SYS_DG_LLM_ID + '.pkl
 with open(filepath, 'rb') as f:
     question_data = pickle.load(f)
 
+import pickle
+filepath = os.path.join(SYS_MODEL_DIR, 'qa' + '_' + SYS_DG_LLM_ID + '.pkl')
+with open(filepath, 'rb') as f:
+    qa_data = pickle.load(f)
+
+
 service_context = ServiceContext.from_defaults(llm=llm)
 
 import time

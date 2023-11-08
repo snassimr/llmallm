@@ -18,9 +18,9 @@ SYS_DATA_DIR  = "data"
 SYS_MODEL_DIR = "model"
 SYS_M_LLM_ID = "recursive"
 SYS_M_CHUNK_SIZE = 1024
-SYS_M_OVERLAP_SIZE = 20
+SYS_M_OVERLAP_SIZE = 64
 
-########################## Load external data
+########################## Load document data
 
 from llmallm.data_prep import get_document_data
 files, documents = get_document_data()
@@ -33,13 +33,15 @@ from llama_index.llms import OpenAI
 from llama_index import ServiceContext
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
-llm = OpenAI(model="gpt-3.5-turbo-16k", max_tokens = 512, temperature = 0.0)
+# llm = OpenAI(model="gpt-3.5-turbo-16k", max_tokens = 512, temperature = 0.0)
+llm = OpenAI(model="gpt-4", max_tokens = 512, temperature = 0.0)
 
 from llama_index.embeddings import OpenAIEmbedding
 from llama_index.node_parser import SimpleNodeParser
 from llama_index import VectorStoreIndex
 from llama_index import  ListIndex
 from llama_index import SummaryIndex
+from llama_index.prompts.prompt_type import PromptType
 from llama_index.tools import QueryEngineTool, ToolMetadata
 
 embed_model = OpenAIEmbedding(model='text-embedding-ada-002',
@@ -53,15 +55,16 @@ service_context = ServiceContext.from_defaults(llm=llm,
                                                embed_model=embed_model,
                                                node_parser=node_parser)
 
+vector_query_engines = {}
 document_agents = {}
 
 for file in files:
 
     # Build vector index
     vector_index = VectorStoreIndex.from_documents(documents[file], service_context=service_context)
-    
+
     # Build list index
-    list_index = ListIndex.from_documents(documents[file], service_context=service_context)
+    summary_index = ListIndex.from_documents(documents[file], service_context=service_context)
     
     # Define query engines
     from llama_index.prompts.default_prompts import (
@@ -71,15 +74,24 @@ for file in files:
     )
 
     from llama_index import Prompt
-    QA_TEMPLATE = Prompt(DEFAULT_TEXT_QA_PROMPT_TMPL)
+    SYS_QA_TEMPLATE = Prompt(DEFAULT_TEXT_QA_PROMPT_TMPL, prompt_type=PromptType.QUESTION_ANSWER)
 
     vector_query_engine = vector_index.as_query_engine(
+        # text_qa_template = SYS_QA_TEMPLATE,
         similarity_top_k=3
     )
     
-    list_query_engine = list_index.as_query_engine(
+    summary_query_engine = summary_index.as_query_engine(
+        # text_qa_template = SYS_QA_TEMPLATE,
         similarity_top_k=3
     )
+
+    from llama_index import SimpleKeywordTableIndex
+    nodes = service_context.node_parser.get_nodes_from_documents(documents[file])
+
+    keyword_index = SimpleKeywordTableIndex(nodes)
+
+    keyword_query_engine = keyword_index.as_query_engine(service_context=service_context)
 
     # Define tools
     query_engine_tools = [
@@ -91,10 +103,17 @@ for file in files:
             ), 
         ),
         QueryEngineTool(
-            query_engine=list_query_engine,
+            query_engine=summary_query_engine,
             metadata=ToolMetadata(
                 name="summary_tool",
                 description=f"Useful for summarization questions related to {file}",
+            ), 
+        ),
+        QueryEngineTool(
+            query_engine=keyword_query_engine,
+            metadata=ToolMetadata(
+                name="keyword_tool",
+                description= f"Useful for retrieving information about named entities from {file}",
             ), 
         ),
     ]
@@ -111,17 +130,33 @@ for file in files:
     # verbose=True, 
     # )
     
-    # Build agent
-    from llama_index.agent import OpenAIAgent
+    # # Build agent
+    # from llama_index.agent import OpenAIAgent
 
-    llm = OpenAI(model = 'gpt-3.5-turbo-16k')
+    # # llm = OpenAI(model = 'gpt-3.5-turbo-16k')
+    # llm = OpenAI(model = 'gpt-4')
 
-    agent = OpenAIAgent.from_tools(
+    # agent = OpenAIAgent.from_tools(
+    #     query_engine_tools,
+    #     llm=llm,
+    #     verbose=True, 
+    #     system_prompt="You must ALWAYS use at least one of the tools provided.",
+    # )
+
+    from llama_index.agent import ReActAgent
+
+    agent = ReActAgent.from_tools(
         query_engine_tools,
         llm=llm,
-        verbose=True, 
+        verbose=True,
+        # system_prompt=f"""\
+        #                 You are a specialized agent designed to answer questions about {file}.
+        #                 Answer using on context is provided by one of tools.
+        #                 Do NOT rely on prior knowledge.\
+        #                 """,
     )
 
+    vector_query_engines[file]   = vector_query_engine
     document_agents[file] = agent
 
 ########################## Define index nodes to link to the document agents
@@ -149,63 +184,86 @@ recursive_retriever = RecursiveRetriever(
     retriever_dict={"vector": vector_retriever},
     query_engine_dict=document_agents,
     verbose=True,
+    
 )
 
-response_synthesizer = get_response_synthesizer(response_mode="compact")
+response_synthesizer = get_response_synthesizer(
+    response_mode="compact",
+    # text_qa_template=SYS_QA_TEMPLATE,
+    )
 
 # define query engine
 query_engine = RetrieverQueryEngine.from_args(
     recursive_retriever,
-    response_synthesizer=response_synthesizer, verbose = True
+    response_synthesizer=response_synthesizer, verbose = True,
+    # text_qa_template=SYS_QA_TEMPLATE,
+    
 )
 
-# ### out of context question (overlap with common domain)
-# question = "How to prepare pizza ?"
-### global summarization question
-# question = " Summarize Llama 2 - Open Foundation and Fine-Tuned Chat Models in 500 words"
-### keyword question
-# question = "Find citations of Ethan Perez in References"
-# question = "If RAG and LLM Fine tuning can be combined some way ?"
-# ### generated_questions
-question = "What is the purpose of Red Teaming?"
-### content question
-# question = "Does paper contain LLama2 comparision to other algorithms ?"
-# question = 'What are the different sections in the document?'
-# question = 'What is the purpose of Figure 2?'
+response = query_engine.query("List citations in the document")
+print(str(response))
 
-response = query_engine.query(question)
-response_text_short   = response.response
-response_text_long = response.source_nodes[0].text.split("Response:", 1)[-1].strip()
-print(response_text_short)
-print(response_text_long)
+questions_set = {
+    'Llama 2 - Open Foundation and Fine-Tuned Chat Models.pdf':
+    [
+        ### Out of context question (overlap with common domain)
+        "How to prepare pizza ?",
+        ### Keyword around question
+        "What is the purpose of Figure 2 ?",
+        "List citations where Ethan Perez is one of authors",
+        ### Global summarization question
+        # "Summarize Llama 2 - Open Foundation and Fine-Tuned Chat Models in 500 words",
+        ### Typical research paper question
+        # "What is the purpose of Red Teaming?",
+        # "Prepare table of content ?",
+        # "Does paper contain LLama2 comparision to other algorithms ?",
+        "How Llama 2 compared to other open source models in Table 6",
+        "How Llama 2 compared to other open source models in Table 3"
+        ### Multi-document questions
+        # "If RAG and LLM Fine tuning can be combined some way ?"
+    ]
+}
 
+from llmallm_modeling_utils import prepare_output
+qa_dataset_df, agent_history_df = prepare_output(files, questions_set, 
+                                                 document_agents, 
+                                                 query_engine)
 
-from llmallm.utils import display_agent_history
-agent_history = display_agent_history(agent)
+from llmallm_modeling_utils import display_output
+display_output(qa_dataset_df, ['file', 'question', 'answer'])
 
-vector_tool_response = vector_query_engine.query(question)
+from llmallm_modeling_utils import display_output
+display_output(agent_history_df, ['file', 'question', 'content'])
 
-from llmallm.utils import display_extracts
-extracts_df = display_extracts(vector_tool_response)
-
-
-filename = 'Llama 2 - Open Foundation and Fine-Tuned Chat Models.pdf'
-document = documents[filename]
-
-
-list_tool_response = list_query_engine.query(question)
-
-list_tool_sources  = list_tool_response.source_nodes
-list_tool_files = [i.metadata['file_name'] for i in list_tool_sources]
-list_tool_pages = [i.metadata['page_label'] for i in list_tool_sources]
-list_tool_texts = [i.node.get_content() for i in list_tool_sources]
-list_tool_scores = [i.score for i in list_tool_sources]
+from llmallm_modeling_utils import prepare_extracts
+extracts_df = prepare_extracts(files, questions_set, vector_query_engines)
+display_output(extracts_df, ['file', 'question', 'text'])
 
 
-from llama_index.response.notebook_utils import display_source_node
+file = 'Llama 2 - Open Foundation and Fine-Tuned Chat Models.pdf'
+nodes = service_context.node_parser.get_nodes_from_documents(documents[file])
 
-for n in response.source_nodes:
-    display_source_node(n, source_length=500)
+keyphrase = "Figure 2:"
+selected_nodes    = []
+selected_extracts = []
+
+for i in nodes:
+    node_content = i.get_content()
+    if (keyphrase in node_content):
+        selected_nodes.append(i)
+        selected_extracts.append(node_content)
+
+from llmallm_modeling_utils import display_strings
+display_strings(selected_extracts)
+
+
+# vector_index._get_node_with_embedding(selected_nodes)
+
+
+
+
+
+
 
 #################################################################################
 from dotenv import load_dotenv

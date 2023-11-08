@@ -13,6 +13,9 @@ import os
 import sys
 import time
 
+SYS_MODEL_DIR = "model"
+SYS_DG_LLM_ID = "zephyr-7b-beta" # zephyr-7b-beta
+
 ########################## Load external data
 
 from llmallm.data_load import load_external_data_2

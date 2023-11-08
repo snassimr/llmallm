@@ -22,5 +22,8 @@ SYS_M_OVERLAP_SIZE = 20
 
 ########################## Load document data
 
-from llmallm.data_prep import create_document_data_2
-create_document_data_2()
+from llmallm.data_prep import create_document_data_3
+create_document_data_3()
+
+from llmallm.modeling.load_llm import load_zephyr_7b_beta
+llm = load_zephyr_7b_beta()
