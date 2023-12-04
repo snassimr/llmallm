@@ -153,6 +153,42 @@ def display_strings(strings_list):
     # Display the styled string
     display(HTML(html_string))
 
+def display_strings(strings_list, substring_to_highlight):
+
+    from IPython.display import display, HTML
+    import html 
+
+    style = """
+            <style>
+            .my-string-style {
+                white-space: normal;
+                word-wrap: break-word;
+                border: 1px solid black;
+                padding: 5px;
+                text-align: left;
+                max-width: 500px;  /* You can set a max-width to ensure wrapping */
+            }
+            .highlight {
+                color: green;  /* Style for highlighted text */
+            }
+            </style>
+            """
+
+    # Create an HTML string with styled substrings
+    html_strings = style
+    for string in strings_list:
+        # Escape HTML to prevent injection
+        escaped_string = html.escape(string)
+        escaped_substring = html.escape(substring_to_highlight)
+        
+        # Highlight the substring in green
+        highlighted_string = escaped_string.replace(escaped_substring, f"<span class='highlight'>{escaped_substring}</span>")
+        html_strings += f"<div class='my-string-style'>{highlighted_string}</div>"
+
+    # Display the styled strings
+    display(HTML(html_strings))
+
+
 
 def display_eval_df(query: str, response: Response, eval_result: str) -> None:
   

@@ -75,10 +75,10 @@ questions_set = {
     'Llama 2 - Open Foundation and Fine-Tuned Chat Models.pdf':
     [
         ### Out of context question (overlap with common domain)
-        "How to prepare pizza ?",
+        # "How to prepare pizza ?",
         ### Keyword around question
         "What is the purpose of Figure 2 ?",
-        "List citations where Ethan Perez is one of authors",
+        # "List citations where Ethan Perez is one of authors",
         ### Global summarization question
         # "Summarize Llama 2 - Open Foundation and Fine-Tuned Chat Models in 500 words",
         ### Typical research paper question
@@ -101,6 +101,5 @@ from llmallm_modeling_utils import prepare_extracts
 vector_query_engines = {}
 vector_query_engines[file] = query_engine
 extracts_df = prepare_extracts(files, questions_set, vector_query_engines)
-
 display_output(extracts_df, ['file', 'question', 'text'])
 

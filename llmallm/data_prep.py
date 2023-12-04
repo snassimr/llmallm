@@ -4,13 +4,21 @@ import time
 
 SYS_DATA_DIR = "data"
 
-def create_document_data_1():
+
+class DataPrep:
+
+    files = []
+    documents = []
+    options = {'load_mode' : -1, 'transform_mode': -1}
+
+
+def load_document_data_1():
 
     from llama_index import SimpleDirectoryReader
 
     files = os.listdir(SYS_DATA_DIR)
     files = [f for f in files if f.endswith(".pdf")]
-    files = [f for f in files if f == 'Llama 2 - Open Foundation and Fine-Tuned Chat Models.pdf']
+    files = [f for f in files if f == 'Llama_2_Open_Foundation_and_Fine-Tuned_Chat_Models.pdf']
     document_titles = [os.path.splitext(f)[0] for f in files]
 
     start = time.time()
@@ -25,13 +33,11 @@ def create_document_data_1():
     print(f"Memory : {sys.getsizeof(documents)}")
     print(f"Time : {time.time() - start}")
 
-    import pickle
-    filepath = os.path.join(SYS_DATA_DIR, 'data.pkl')
-    stored_document_data = {'files' : files, 'documents' : documents}
-    with open(filepath, 'wb') as f:
-        pickle.dump(stored_document_data, f)
+    DataPrep.files,  DataPrep.documents = files, documents
+
+
             
-def create_document_data_2():
+def load_document_data_2():
 
     from llama_index import download_loader
     from llama_index import SimpleDirectoryReader
@@ -40,7 +46,7 @@ def create_document_data_2():
 
     files = os.listdir(SYS_DATA_DIR)
     files = [f for f in files if f.endswith(".pdf")]
-    files = [f for f in files if f == 'Llama 2 - Open Foundation and Fine-Tuned Chat Models.pdf']
+    files = [f for f in files if f == 'Llama_2_Open_Foundation_and_Fine-Tuned_Chat_Models.pdf']
     document_titles = [os.path.splitext(f)[0] for f in files]
 
     start = time.time()
@@ -48,29 +54,24 @@ def create_document_data_2():
 
     for file in files:
         if(not(file in documents)):
-            dir_reader = SimpleDirectoryReader(input_files=[f"{SYS_DATA_DIR}/{file}"], file_extractor={
-                        ".pdf": UnstructuredReader(),
-                        })
+            dir_reader = SimpleDirectoryReader(input_files=[f"{SYS_DATA_DIR}/{file}"], 
+                                               file_extractor={".pdf": UnstructuredReader(),
+                                              })
             documents[file] = dir_reader.load_data()
 
     print(f"Documents loaded : {len(documents)}")
     print(f"Memory : {sys.getsizeof(documents)}")
     print(f"Time : {time.time() - start}")
 
-    import pickle
-    filepath = os.path.join(SYS_DATA_DIR, 'data.pkl')
-    stored_document_data = {'files' : files, 'documents' : documents}
-    with open(filepath, 'wb') as f:
-        pickle.dump(stored_document_data, f)
+    DataPrep.files,  DataPrep.documents = files, documents
 
-def create_document_data_3():
+def load_document_data_3():
 
     from llama_hub.file.pymu_pdf.base import PyMuPDFReader
-    from llama_index import SimpleDirectoryReader
 
     files = os.listdir(SYS_DATA_DIR)
     files = [f for f in files if f.endswith(".pdf")]
-    files = [f for f in files if f == 'Llama 2 - Open Foundation and Fine-Tuned Chat Models.pdf']
+    files = [f for f in files if f == 'Llama_2_Open_Foundation_and_Fine-Tuned_Chat_Models.pdf']
     document_titles = [os.path.splitext(f)[0] for f in files]
 
     start = time.time()
@@ -85,20 +86,16 @@ def create_document_data_3():
     print(f"Memory : {sys.getsizeof(documents)}")
     print(f"Time : {time.time() - start}")
 
-    import pickle
-    filepath = os.path.join(SYS_DATA_DIR, 'data.pkl')
-    stored_document_data = {'files' : files, 'documents' : documents}
-    with open(filepath, 'wb') as f:
-        pickle.dump(stored_document_data, f)
+    DataPrep.files,  DataPrep.documents = files, documents
 
-def create_document_data_4():
+def load_document_data_4():
 
     from llmsherpa.readers import LayoutPDFReader
     from llama_index import Document
 
     files = os.listdir(SYS_DATA_DIR)
     files = [f for f in files if f.endswith(".pdf")]
-    files = [f for f in files if f == 'Llama 2 - Open Foundation and Fine-Tuned Chat Models.pdf']
+    files = [f for f in files if f == 'Llama_2_Open_Foundation_and_Fine-Tuned_Chat_Models.pdf']
     document_titles = [os.path.splitext(f)[0] for f in files]
 
     start = time.time()
@@ -118,21 +115,58 @@ def create_document_data_4():
     print(f"Memory : {sys.getsizeof(documents)}")
     print(f"Time : {time.time() - start}")
 
+    DataPrep.files,  DataPrep.documents = files, documents
+
+def transform_document(doc , transform_mode = 1):
+    
+    def transform_text(text: str) -> str:
+        """
+        """
+        import re
+
+        # Treating figures tokens
+        # text = re.sub(r'Figure (\d+)', r'#Figure \1#', text)
+        # text = re.sub(r'Figure\s+(\d+)', r'Figure\1', text)
+        text = re.sub(r'Figure\s+(\d+)', r'<Figure\1>', text)
+
+        return text
+
+    if(transform_mode == 1) : pass
+    if(transform_mode == 2) : doc.text = transform_text(doc.text)
+
+    return doc
+
+def prepare_document_data(load_mode = 1 , transform_mode = 1):
+    
+    if(not(DataPrep.options['load_mode']==load_mode)):
+        if(load_mode == 1) : load_document_data_1()
+        if(load_mode == 2) : load_document_data_2()
+        if(load_mode == 3) : load_document_data_3()
+        if(load_mode == 4) : load_document_data_4()
+        DataPrep.options['load_mode'] = load_mode
+
+    if(not(DataPrep.options['load_mode']==load_mode) or not(DataPrep.options['transform_mode']==transform_mode)):
+        for file in DataPrep.files:
+            for i, doc in enumerate(DataPrep.documents[file]):
+                DataPrep.documents[file][i] = transform_document(
+                    doc , 
+                    transform_mode = transform_mode)
+
     import pickle
     filepath = os.path.join(SYS_DATA_DIR, 'data.pkl')
-    stored_document_data = {'files' : files, 'documents' : documents}
+    documents_data = {'files' : DataPrep.files, 'documents' : DataPrep.documents}
     with open(filepath, 'wb') as f:
-        pickle.dump(stored_document_data, f)
+        pickle.dump(documents_data, f)
 
 def get_document_data():
-    
+
     import pickle
     filepath = os.path.join(SYS_DATA_DIR, 'data.pkl')
     with open(filepath, 'rb') as f:
-        stored_document_data = pickle.load(f)
+        documents_data = pickle.load(f)
 
-    files = stored_document_data['files']
-    documents = stored_document_data['documents']
+    files = documents_data['files']
+    documents = documents_data['documents']
 
     return files, documents
 
