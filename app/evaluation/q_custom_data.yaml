@@ -1,0 +1,28 @@
+Llama_2_Open_Foundation_and_Fine-Tuned_Chat_Models.pdf:
+  # Figures questions
+  - "What the purpose of Figure 2"
+  # - "What the purpose of Figure 9 ?"
+  # - "What the purpose of Figure 22 ?"
+  - "What the purpose of Figure 99"
+  # Tables questions
+  # - "What the purpose of Table 2"
+  # - "What the purpose of Table 11 ?"
+  # - "What the purpose of Table 15"
+  # - "What the purpose of Table 99"
+  # # Citations
+  # - "List citations of Ethan Perez"
+  # # Out of context question (overlap with common knowledge)
+  # - "How to prepare pizza ?"
+  # # Global summarization questions
+  # - "Summarize Llama 2 - Open Foundation and Fine-Tuned Chat Models in 500 words"
+  # - "Summarize Section 2"
+  # # Summarization like questions
+  # - "Does paper contain LLama2 comparision to other algorithms ?"
+  # - "Prepare table of content ?"
+  # - "List all figures related to RLHF"
+  # # Typical questions
+  # - "What is the purpose of Red Teaming?"
+  # - "How Llama 2 compared to other open source models in Table 6"
+
+### Multi-document questions
+# "If RAG and LLM Fine tuning can be combined some way ?"

@@ -2,7 +2,7 @@ import os
 import sys
 import time
 
-SYS_DATA_DIR = "data"
+SYS_DATA_DIR = "app/data"
 
 
 class DataPrep:
@@ -127,7 +127,7 @@ def transform_document(doc , transform_mode = 1):
         # Treating figures tokens
         # text = re.sub(r'Figure (\d+)', r'#Figure \1#', text)
         # text = re.sub(r'Figure\s+(\d+)', r'Figure\1', text)
-        text = re.sub(r'Figure\s+(\d+)', r'<Figure\1>', text)
+        text = re.sub(r'Figure\s+(\d+)', r'[Figure \1]', text)
 
         return text
 
@@ -138,7 +138,7 @@ def transform_document(doc , transform_mode = 1):
 
 def prepare_document_data(load_mode = 1 , transform_mode = 1):
     
-    if(not(DataPrep.options['load_mode']==load_mode)):
+    if(not(DataPrep.options['load_mode']==load_mode) or not(DataPrep.options['transform_mode']==transform_mode)):
         if(load_mode == 1) : load_document_data_1()
         if(load_mode == 2) : load_document_data_2()
         if(load_mode == 3) : load_document_data_3()
@@ -151,6 +151,7 @@ def prepare_document_data(load_mode = 1 , transform_mode = 1):
                 DataPrep.documents[file][i] = transform_document(
                     doc , 
                     transform_mode = transform_mode)
+        DataPrep.options['transform_mode'] = transform_mode
 
     import pickle
     filepath = os.path.join(SYS_DATA_DIR, 'data.pkl')

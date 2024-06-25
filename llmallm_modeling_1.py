@@ -1,8 +1,8 @@
-# %reload_ext autoreload
-# %autoreload 2
+%reload_ext autoreload
+%autoreload 2
 
-# from IPython.core.interactiveshell import InteractiveShell
-# InteractiveShell.ast_node_interactivity = "all"
+from IPython.core.interactiveshell import InteractiveShell
+InteractiveShell.ast_node_interactivity = "all"
 
 from dotenv import load_dotenv
 
@@ -14,11 +14,12 @@ import sys
 import time
 import pandas as pd
 
-SYS_DATA_DIR  = "data"
-SYS_MODEL_DIR = "modeling"
+SYS_DATA_DIR  = "app/data"
+SYS_MODEL_DIR = "app/modeling"
+SYS_EVAL_DIR = "app/evaluation"
 SYS_M_LLM_ID = "recursive"
-SYS_M_CHUNK_SIZE = 128
-SYS_M_OVERLAP_SIZE = 16
+SYS_M_CHUNK_SIZE = 256
+SYS_M_OVERLAP_SIZE = 32
 
 llmallm_path = "/home/matatov.n/projects/llmallm"
 # if os.path.exists(llmallm_path) and llmallm_path not in sys.path:
@@ -45,6 +46,7 @@ llm = OpenAI(model="gpt-4", max_tokens = 512, temperature = 0.0)
 
 from llama_index import ServiceContext
 from llama_index.prompts.prompt_type import PromptType
+from llama_index import Prompt
 from llama_index.tools import QueryEngineTool, ToolMetadata
 
 ## Define embedding model
@@ -100,15 +102,17 @@ for file in files:
         DEFAULT_REFINE_PROMPT_TMPL
     )
 
-    from llama_index import Prompt
- 
     SYS_QA_TEMPLATE = Prompt(DEFAULT_TEXT_QA_PROMPT_TMPL, prompt_type=PromptType.QUESTION_ANSWER)
 
     vector_query_engine = vector_index.as_query_engine(
         text_qa_template = SYS_QA_TEMPLATE,
         similarity_top_k=3
     )
-    
+
+    from llmallm.modeling.engines import create_figures_query_engine
+
+    figures_engine = create_figures_query_engine(documents[file], SYS_MODEL_DIR)
+
     summary_query_engine = summary_index.as_query_engine(
         # text_qa_template = SYS_QA_TEMPLATE,
         similarity_top_k=3
@@ -125,6 +129,13 @@ for file in files:
             metadata=ToolMetadata(
                 name="vector_tool",
                 description=f"Useful for retrieving specific context related to {file}",
+            ), 
+        ),
+        QueryEngineTool(
+            query_engine=vector_query_engine,
+            metadata=ToolMetadata(
+                name="figures_tool",
+                description=f"Useful for retrieving specific context related to figures",
             ), 
         ),
         QueryEngineTool(
@@ -219,27 +230,12 @@ query_engine = RetrieverQueryEngine.from_args(
     
 )
 
-
-q_dataset = {
-    'Llama_2_Open_Foundation_and_Fine-Tuned_Chat_Models.pdf':
-    [
-        ### Out of context question (overlap with common domain)
-        # "How to prepare pizza ?",
-        ### Keyword around question
-        "What is the purpose of Figure2 ?",
-        # "List citations where Ethan Perez is one of co-authors",
-        ### Global summarization question
-        # "Summarize Llama 2 - Open Foundation and Fine-Tuned Chat Models in 500 words",
-        ### Typical research paper question
-        # "What is the purpose of Red Teaming?",
-        # "Prepare table of content ?",
-        # "Does paper contain LLama2 comparision to other algorithms ?",
-        # "How Llama 2 compared to other open source models in Table 6",
-        # "How Llama 2 compared to other open source models in Table 3",
-        ### Multi-document questions
-        # "If RAG and LLM Fine tuning can be combined some way ?"
-    ]
-}
+import yaml
+from llmallm_modeling_utils import display_output
+with open(os.path.join(SYS_EVAL_DIR, "q_custom_data.yaml"), 'r') as q_data_file:
+    q_dataset = yaml.safe_load(q_data_file)
+q_dataset_df = pd.DataFrame(q_dataset)
+display_output(q_dataset_df, [file])
 
 from llmallm_modeling_utils import prepare_output
 qa_dataset_df, agent_history_df = prepare_output(files, q_dataset, 
